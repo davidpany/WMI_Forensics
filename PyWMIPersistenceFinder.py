@@ -52,7 +52,7 @@
 #   https://www.fireeye.com/content/dam/fireeye-www/global/en/current-threats/pdfs/wp-windows-management-instrumentation.pdf
 #
 # License:
-#   Copyright (c) 2016 David Pany
+#   Copyright (c) 2017 David Pany
 #
 #   Permission is hereby granted, free of charge, to any person obtaining a copy
 #   of this software and associated documentation files (the "Software"), to deal
