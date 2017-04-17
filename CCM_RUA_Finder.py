@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 #
 # CCM_RUA_Finder.py
-# Version 1.0
+# Version 1.1 beta
 #
 # Author:
-#   David Pany - Mandiant (FireEye) - 2016
+#   David Pany - Mandiant (FireEye) - 2017
 #   Twitter: @DavidPany
 #   Please send  comments, bug reports, and questions to @DavidPany
 #       or push changes directly to GitHub
@@ -101,7 +101,7 @@
 #
 # License:
 #
-#  Copyright (c) 2016 David Pany
+#  Copyright (c) 2017 David Pany
 #
 #  Permission is hereby granted, free of charge, to any person obtaining a copy 
 #  of this software and associated documentation files (the "Software"), to deal 
@@ -242,24 +242,46 @@ def main():
 
     # MO to match CCM_RUA data from string header to end
     ccm_nulldel_carve_mo = re.compile(
-        "(CCM_RecentlyUsedApps)"
-        "(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)"
-        "(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)"
-        "(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)"
-        "(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)"
-        "(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)"
-        "(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)")
+        "CCM_RecentlyUsedApps\x00\x00"
+        "(?P<additional_product_codes>[^\x00]*)\x00\x00"
+        "(?P<company_name>[^\x00]*)\x00\x00"
+        "(?P<explorer_file_name>[^\x00]*)\x00\x00"
+        "(?P<file_description>[^\x00]*)\x00\x00"
+        "(?P<file_properties_hash>[^\x00]*)\x00\x00"
+        "(?P<file_version>[^\x00]*)\x00\x00"
+        "(?P<folder_path>[^\x00]*)\x00\x00"
+        "(?P<last_used_time>[^\x00]*)\x00\x00"
+        "(?P<last_user_name>[^\x00]*)\x00\x00"
+        "(?P<msi_display_name>[^\x00]*)\x00\x00"
+        "(?P<msi_publisher>[^\x00]*)\x00\x00"
+        "(?P<msi_version>[^\x00]*)\x00\x00"
+        "(?P<original_file_name>[^\x00]*)\x00\x00"
+        "(?P<product_language>[^\x00]*)\x00\x00"
+        "(?P<product_name>[^\x00]*)\x00\x00"
+        "(?P<product_version>[^\x00]*)\x00\x00"
+        "(?P<software_properties_hash>[^\x00]*)")
 
     # MO to match CCM_RUA data from GUID header to end
     ccm_nulldel_full_mo = re.compile(
-        "({}|{})".format(CCM_RUA_GUID_VISTA_UTF16, CCM_RUA_GUID_XP_UTF16)
-        + "([.\x00-\xFF]{20,250})(CCM_RecentlyUsedApps)"
-        "(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)"
-        "(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)"
-        "(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)"
-        "(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)"
-        "(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)"
-        "(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)")
+        "(?P<GUID>{}|{})".format(CCM_RUA_GUID_VISTA_UTF16, CCM_RUA_GUID_XP_UTF16)
+        + "(?P<rua_header>[.\x00-\xFF]{20,250})CCM_RecentlyUsedApps\x00\x00"
+        "(?P<additional_product_codes>[^\x00]*)\x00\x00"
+        "(?P<company_name>[^\x00]*)\x00\x00"
+        "(?P<explorer_file_name>[^\x00]*)\x00\x00"
+        "(?P<file_description>[^\x00]*)\x00\x00"
+        "(?P<file_properties_hash>[^\x00]*)\x00\x00"
+        "(?P<file_version>[^\x00]*)\x00\x00"
+        "(?P<folder_path>[^\x00]*)\x00\x00"
+        "(?P<last_used_time>[^\x00]*)\x00\x00"
+        "(?P<last_user_name>[^\x00]*)\x00\x00"
+        "(?P<msi_display_name>[^\x00]*)\x00\x00"
+        "(?P<msi_publisher>[^\x00]*)\x00\x00"
+        "(?P<msi_version>[^\x00]*)\x00\x00"
+        "(?P<original_file_name>[^\x00]*)\x00\x00"
+        "(?P<product_language>[^\x00]*)\x00\x00"
+        "(?P<product_name>[^\x00]*)\x00\x00"
+        "(?P<product_version>[^\x00]*)\x00\x00"
+        "(?P<software_properties_hash>[^\x00]*)")
 
     # Output file header
     header_string = ('"Format"\t"FolderPath"\t"ExplorerFileName"\t"FileSize"\t'
@@ -319,11 +341,8 @@ def parse_null_delimited_record(ccm_nulldel_match, full_tf, output_file):
     # If this a full record (not carved), we will try to parse the headers
     if full_tf:
         header_data = "{}{}".format(
-            ccm_nulldel_match.groups()[0],
-            ccm_nulldel_match.groups()[1])
-
-        # The regex match used later is affected by the header
-        ccm_base_offset = 4
+            ccm_nulldel_match.group("GUID"),
+            ccm_nulldel_match.group("rua_header"))
 
         #if a standard GUID header is in the begininning of the header
         if (
@@ -339,26 +358,27 @@ def parse_null_delimited_record(ccm_nulldel_match, full_tf, output_file):
             # Find timestamps, file size, and launch count in the header
             # header == data from GUID header to "CCM_RecentlyUsedApps"
             header_data_mo = re.compile(
-                "({}|{})".format(CCM_RUA_GUID_VISTA_UTF16, CCM_RUA_GUID_XP_UTF16)
-                + "([\x00-\xFF]{8})([\x00-\xFF]{8})([\x00-\xFF]{34})"
-                "([\x00-\xFF]{4})([\x00-\xFF]{20})([\x00-\xFF]{4})")
+                "(?P<GUID>{}|{})".format(CCM_RUA_GUID_VISTA_UTF16, CCM_RUA_GUID_XP_UTF16)
+                + "(?P<timestamp_1>[\x00-\xFF]{8})(?P<timestamp_2>[\x00-\xFF]{8})"
+                "(?P<unused>[\x00-\xFF]{34})(?P<file_size>[\x00-\xFF]{4})"
+                "(?P<unused2>[\x00-\xFF]{20})(?P<launch_count>[\x00-\xFF]{4})")
 
             header_data_match = re.search(header_data_mo, header_data)
 
             # Parse timestamps from header and convert to human readable format
-            timestamp_1_bin = header_data_match.groups()[1]
-            timestamp_2_bin = header_data_match.groups()[2]
+            timestamp_1_bin = header_data_match.group("timestamp_1")
+            timestamp_2_bin = header_data_match.group("timestamp_2")
 
-            timestamp_1_nano = struct.unpack("Q", timestamp_1_bin)[0]
-            timestamp_2_nano = struct.unpack("Q", timestamp_2_bin)[0]
+            timestamp_1_nano = struct.unpack("<Q", timestamp_1_bin)[0]
+            timestamp_2_nano = struct.unpack("<Q", timestamp_2_bin)[0]
 
             timestamp_1 = convert_nano_to_human_time(timestamp_1_nano)
             timestamp_2 = convert_nano_to_human_time(timestamp_2_nano)
 
             # Parse file size and launch count from header
-            file_size = struct.unpack("L", header_data_match.groups()[4])[0]
+            file_size = struct.unpack("<L", header_data_match.group("file_size"))[0]
             launch_count = struct.unpack(
-                "L", header_data_match.groups()[6])[0]
+                "<L", header_data_match.group("launch_count"))[0]
             timestamps_exist = True
 
         # If the header doesn't exist, this is a carved record without
@@ -369,7 +389,6 @@ def parse_null_delimited_record(ccm_nulldel_match, full_tf, output_file):
 
     # If we don't have a header, regex matches will be different
     else:
-        ccm_base_offset = 2
         timestamps_exist = False
         record_type = "Carved_NullDelim"
 
@@ -381,15 +400,15 @@ def parse_null_delimited_record(ccm_nulldel_match, full_tf, output_file):
         launch_count = " "
 
     # Find each field of the data format as defined in script header
-    additional_product_codes = ccm_nulldel_match.groups()[ccm_base_offset]
-    company_name = ccm_nulldel_match.groups()[ccm_base_offset+2]
-    explorer_file_name = ccm_nulldel_match.groups()[ccm_base_offset+4]
-    file_description = ccm_nulldel_match.groups()[ccm_base_offset+6]
-    file_properties_hash = ccm_nulldel_match.groups()[ccm_base_offset+8]
-    file_version = ccm_nulldel_match.groups()[ccm_base_offset+10]
-    folder_path = ccm_nulldel_match.groups()[ccm_base_offset+12]
+    additional_product_codes = ccm_nulldel_match.group("additional_product_codes")
+    company_name = ccm_nulldel_match.group("company_name")
+    explorer_file_name = ccm_nulldel_match.group("explorer_file_name")
+    file_description = ccm_nulldel_match.group("file_description")
+    file_properties_hash = ccm_nulldel_match.group("file_properties_hash")
+    file_version = ccm_nulldel_match.group("file_version")
+    folder_path = ccm_nulldel_match.group("folder_path")
 
-    raw_time = ccm_nulldel_match.groups()[ccm_base_offset+14]
+    raw_time = ccm_nulldel_match.group("last_used_time")
     year = raw_time[:4]
     month = raw_time[4:6]
     day = raw_time[6:8]
@@ -400,17 +419,17 @@ def parse_null_delimited_record(ccm_nulldel_match, full_tf, output_file):
         year, month, day, hour, minute, second)
     time_zone_offset = raw_time[-4:]
 
-    last_user_name = ccm_nulldel_match.groups()[ccm_base_offset+16]
-    msi_display_name = ccm_nulldel_match.groups()[ccm_base_offset+18]
-    msi_publisher = ccm_nulldel_match.groups()[ccm_base_offset+20]
-    msi_version = ccm_nulldel_match.groups()[ccm_base_offset+22]
-    original_file_name = ccm_nulldel_match.groups()[ccm_base_offset+24]
-    product_code_language = ccm_nulldel_match.groups()[ccm_base_offset+26]
-    product_name = ccm_nulldel_match.groups()[ccm_base_offset+28]
-    product_version = ccm_nulldel_match.groups()[ccm_base_offset+30]
-    software_properties_hash = ccm_nulldel_match.groups()[ccm_base_offset+32]
+    last_user_name = ccm_nulldel_match.group("last_user_name")
+    msi_display_name = ccm_nulldel_match.group("msi_display_name")
+    msi_publisher = ccm_nulldel_match.group("msi_publisher")
+    msi_version = ccm_nulldel_match.group("msi_version")
+    original_file_name = ccm_nulldel_match.group("original_file_name")
+    product_language = ccm_nulldel_match.group("product_language")
+    product_name = ccm_nulldel_match.group("product_name")
+    product_version = ccm_nulldel_match.group("product_version")
+    software_properties_hash = ccm_nulldel_match.group("software_properties_hash")
 
-    #This value doesn't seem to exist in the XML format
+    #This value doesn't seem to exist in the Null Delimited format
     product_code = " "
 
     # Build output string
@@ -423,7 +442,7 @@ def parse_null_delimited_record(ccm_nulldel_match, full_tf, output_file):
             timestamp_2, original_file_name, file_description, company_name,
             product_name, product_version, file_version,
             additional_product_codes, msi_version, msi_display_name,
-            software_properties_hash, product_code, product_code_language,
+            software_properties_hash, product_code, product_language,
             msi_publisher, file_properties_hash)
 
     # Send sanitized parsed data to output file or stdout appropriately
