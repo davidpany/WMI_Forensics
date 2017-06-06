@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # 
 # PyWMIPersistenceFinder.py
-# Version 1.0
+# Version 1.1
 #
 # Author:
 #   David Pany - Mandiant (FireEye) - 2017
@@ -41,6 +41,10 @@
 #
 #   Filter To Consumer Binding:
 #       Structure that says "When filter condition happens, execute consumer"
+#
+# Changes:
+#   1.1 - removed newline characters for regex matching
+#       - enhanced txt output for readability
 #
 # Future Improvements:
 #   [ ] Implement named regex groups for clarity
@@ -154,7 +158,7 @@ def main():
     lines_list.append(current_line)
 
     while current_line:
-        potential_page = " ".join(lines_list)
+        potential_page = " ".join(lines_list).replace("\n", "")
 
         # Check each potential page for the consumers we are looking for
         if "EventConsumer" in potential_page:
@@ -167,15 +171,16 @@ def main():
                     consumer_match = re.search(consumer_mo, potential_page)
                     if consumer_match:
                         noisy_string = consumer_match.groups()[2]
-                        consumer_details = "{} ~ {}".format(
+                        consumer_details = "\n\t\tConsumer Type: {}\n\t\tArguments:     {}".format(
                             consumer_match.groups()[0],
                             filter(lambda event_consumer_name: event_consumer_name in
                                    PRINTABLE_CHARS, noisy_string))
                         if consumer_match.groups()[5]:
-                            consumer_details += " ~ {}".format(consumer_match.groups()[5])
+                            consumer_details += "\n\t\tConsumer Name: {}".format(consumer_match.groups()[5])
                         if consumer_match.groups()[7]:
-                            consumer_details += " ~ {}".format(consumer_match.groups()[7])
+                            consumer_details += "\n\t\tOther:         {}".format(consumer_match.groups()[7])
                         consumer_dict[event_consumer_name].add(consumer_details)
+
                 else:
                     consumer_mo = re.compile(
                         r"(\w*EventConsumer)(.*?)({})(\x00\x00)([^\x00]*)(\x00\x00)([^\x00]*)"
@@ -197,7 +202,7 @@ def main():
                     r"({})(\x00\x00)([^\x00]*)(\x00\x00)".format(event_filter_name))
                 filter_match = re.search(filter_mo, potential_page)
                 if filter_match:
-                    filter_details = "{} ~ {}".format(
+                    filter_details = "\n\t\tFilter name:  {}\n\t\tFilter Query: {}".format(
                         filter_match.groups()[0],
                         filter_match.groups()[2])
                     filter_dict[event_filter_name].add(filter_details)
@@ -206,7 +211,7 @@ def main():
         lines_list.append(current_line)
         lines_list.pop(0)
     objects_file.close()
-
+    
     # Print results to stdout. CSV will be in future version.
     print("\n    Bindings:\n")
     for binding_name, binding_details in bindings_dict.iteritems():
@@ -230,7 +235,7 @@ def main():
 
         # Print details for each filter found for this filter name
         for event_filter_details in filter_dict[event_filter_name]:
-            print("            Filter: {}".format(event_filter_details))
+            print("\n            Filter: {}".format(event_filter_details))
             print()
 
     # Print closing message
