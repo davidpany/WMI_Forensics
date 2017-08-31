@@ -2,7 +2,7 @@
 #
 # CCM_RUA_Finder.py
 # Version 1.2 #StatusUpdate
-#   Thanks to @Tecko921 for the status update feature request, testing, and feedback!
+#   Thanks to Chakib (@Tecko921) for the status update feature request, testing, and feedback!
 #
 # Author:
 #   David Pany - Mandiant (FireEye) - 2017
