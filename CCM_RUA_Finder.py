@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 #
 # CCM_RUA_Finder.py
-# Version 1.1 beta
+# Version 1.2 #StatusUpdate
+#   Thanks to @Tecko921 for the status update feature request, testing, and feedback!
 #
 # Author:
 #   David Pany - Mandiant (FireEye) - 2017
@@ -129,6 +130,7 @@ import struct
 import argparse
 from datetime import datetime, timedelta
 import logging
+import sys
 
 # Set up logging - default level WARN
 logging.basicConfig(level=logging.WARN)
@@ -146,6 +148,20 @@ BLOCK_READ_SIZE = 2100 # Read 2100 bytes to capture entire CCM_RUA record
 MATCH_PARTIAL_FAST_FORWARD = 31 # Advance 31 to look for next header
 MISS_PARTIAL_REWIND = 19 # Rewind 19 to catch partial string headers
 
+def update_status(current_progress, full_progress):
+    """This function manages command line status updates"""
+
+    #Clear StdOut
+    sys.stdout.write("\b" * (40))
+    sys.stdout.write("{}".format(" " * 50))
+    sys.stdout.write("\b" * (50))
+    sys.stdout.flush()
+
+    # update StdOut with new info
+    sys.stdout.write("\t\t{}% complete...".format(((current_progress * 100) / full_progress)))
+    sys.stdout.flush()
+
+
 def find_ccm_rua_data(od_path):
     """This function returns 2100 byte chuncks of data that contain
     CCM_RUA entries"""
@@ -158,7 +174,15 @@ def find_ccm_rua_data(od_path):
     data_blocks = set()
 
     logging.info("Reading File")
+    
+    #create loopcount to throttle status updates
+    loop_count = 0
+    
     while current_seek <= max_seek_size:
+        #print status update
+        if loop_count % 1000000 == 0:
+            update_status(current_seek, max_seek_size)
+        
         # Read 50 bytes at a time to look for CCM_RUA string
         current_buffer = od_file.read(DEFAULT_READ_SIZE)
         current_seek += DEFAULT_READ_SIZE
@@ -191,6 +215,11 @@ def find_ccm_rua_data(od_path):
             old_seek = current_seek
             current_seek = old_seek - MISS_PARTIAL_REWIND
         od_file.seek(current_seek)
+        
+        loop_count += 1
+        
+    # Display status update for 100% completion
+    update_status(max_seek_size, max_seek_size)
     logging.info("Completed Reading File")
 
     return data_blocks
